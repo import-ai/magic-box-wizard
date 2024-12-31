@@ -11,6 +11,7 @@ from wizard.config import Config
 from wizard.db import get_session_factory
 from wizard.db.entity import Task as ORMTask
 from wizard.entity import Task
+from wizard.wand.functions.base_function import BaseFunction
 from wizard.wand.functions.html_to_markdown import HTMLToMarkdown
 from wizard.wand.functions.index import CreateOrUpdateIndex, DeleteIndex
 
@@ -19,9 +20,11 @@ class Worker:
     def __init__(self, config: Config, worker_id: int):
         self.worker_id = worker_id
 
-        self.html_to_markdown = HTMLToMarkdown()
-        self.create_or_update_index: CreateOrUpdateIndex = CreateOrUpdateIndex(config)
-        self.delete_index: DeleteIndex = DeleteIndex(config)
+        self.function_dict: dict[str, BaseFunction] = {
+            "create_or_update_index": CreateOrUpdateIndex(config),
+            "delete_index": DeleteIndex(config),
+            "html_to_markdown": HTMLToMarkdown()
+        }
 
         self.logger = get_logger("worker")
         self.session_factory = get_session_factory(config.db.url)
@@ -137,12 +140,7 @@ class Worker:
 
     async def worker_router(self, task: Task) -> dict:
         function = task.function
-        if function == "html_to_markdown":
-            worker = self.html_to_markdown
-        elif function == "create_or_update_index":
-            worker = self.create_or_update_index
-        elif function == "delete_index":
-            worker = self.delete_index
-        else:
-            raise ValueError(f"Invalid function: {function}")
-        return await worker.run(task)
+        if function in self.function_dict:
+            worker = self.function_dict[function]
+            return await worker.run(task)
+        raise ValueError(f"Invalid function: {function}")

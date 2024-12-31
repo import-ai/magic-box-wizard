@@ -1,8 +1,0 @@
-name: magic-box
-
-services:
-  chromadb:
-    image: chromadb/chroma:0.5.23
-    restart: unless-stopped
-    ports:
-      - "10086:8000"
